@@ -84,14 +84,30 @@ class IterativePolicyEvaluation(DynamicProgramming):
         raise NotImplementedError
 
     def evaluate(self):
-        """Evaluate the policy and update the values for one iteration"""
-        # TODO: Implement the policy evaluation step
-        raise NotImplementedError
+        while True:
+            delta = 0
+            old_values = self.values.copy()
+            for state in range(self.grid_world.get_state_space()):
+                v = 0
+                policy_weights = []
+                for action in range(self.grid_world.get_action_space()):
+                    next_state, reward, end = self.grid_world.step(state, action)
+                    policy_weight = self.policy[state, action]
+                    policy_weights.append(policy_weight)
+                    if end:
+                        v += policy_weight * reward
+                    else:
+                        v += policy_weight * (reward + self.discount_factor * old_values[next_state])
+                self.values[state] = v / sum(policy_weights)
+                delta = max(delta, abs(old_values[state] - self.values[state]))
+            if delta < self.threshold:
+                break
+
 
     def run(self) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the iterative policy evaluation algorithm until convergence
-        raise NotImplementedError
+        self.evaluate()
 
 
 class PolicyIteration(DynamicProgramming):
