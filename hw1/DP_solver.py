@@ -153,7 +153,7 @@ class PolicyIteration(DynamicProgramming):
         # TODO: Implement the policy improvement step
         old_policy = self.policy.copy()
         for state in range(self.grid_world.get_state_space()):
-            next_state, reward, end = self.grid_world.step(state, self.policy[state])
+            _, _, end = self.grid_world.step(state, self.policy[state])
             if end:
                 continue
             best_action = None
@@ -201,17 +201,44 @@ class ValueIteration(DynamicProgramming):
     def policy_evaluation(self):
         """Evaluate the policy and update the values"""
         # TODO: Implement the policy evaluation step
-        raise NotImplementedError
+        while True:
+            delta = 0
+            old_values = self.values.copy()
+            for state in range(self.grid_world.get_state_space()):
+                _, reward, end = self.grid_world.step(state, self.policy[state])
+                if end:
+                    self.values[state] = reward
+                else:
+                    self.values[state] = float("-inf")
+                    for action in range(self.grid_world.get_action_space()):
+                        next_state, reward, _ = self.grid_world.step(state, action)
+                        self.values[state] = max(self.values[state], reward + self.discount_factor * old_values[next_state])
+                delta = max(delta, abs(old_values[state] - self.values[state]))
+            if delta < self.threshold:
+                break
 
     def policy_improvement(self):
         """Improve the policy based on the evaluated values"""
         # TODO: Implement the policy improvement step
-        raise NotImplementedError
+        for state in range(self.grid_world.get_state_space()):
+            _, _, end = self.grid_world.step(state, self.policy[state])
+            if end:
+                continue
+            best_action = None
+            best_q_value = float("-inf")
+            for action in range(self.grid_world.get_action_space()):
+                next_state, reward, _ = self.grid_world.step(state, action)
+                q_value = reward + self.discount_factor * self.values[next_state]
+                if q_value > best_q_value:
+                    best_q_value = q_value
+                    best_action = action
+            self.policy[state] = best_action
 
     def run(self) -> None:
         """Run the algorithm until convergence"""
         # TODO: Implement the value iteration algorithm until convergence
-        raise NotImplementedError
+        self.policy_evaluation()
+        self.policy_improvement()
 
 
 class AsyncDynamicProgramming(DynamicProgramming):
