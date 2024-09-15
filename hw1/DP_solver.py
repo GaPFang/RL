@@ -250,8 +250,84 @@ class AsyncDynamicProgramming(DynamicProgramming):
             discount_factor (float, optional): Discount factor gamma. Defaults to 1.0.
         """
         super().__init__(grid_world, discount_factor)
+    
+    def policy_evaluation(self, mode):
+        """Evaluate the policy and update the values"""
+        # TODO: Implement the policy evaluation step
+        if (mode == "in-place"):
+            while True:
+                delta = 0
+                for state in range(self.grid_world.get_state_space()):
+                    _, reward, end = self.grid_world.step(state, self.policy[state])
+                    if end:
+                        self.values[state] = reward
+                    else:
+                        old_value = self.values[state]
+                        self.values[state] = float("-inf")
+                        for action in range(self.grid_world.get_action_space()):
+                            next_state, reward, _ = self.grid_world.step(state, action)
+                            self.values[state] = max(self.values[state], reward + self.discount_factor * self.values[next_state])
+                        delta = max(delta, abs(self.values[state] - old_value))
+                if delta < self.threshold:
+                    break
+        elif (mode == "prioritized"):
+            deltas = np.zeros(self.grid_world.get_state_space())
+            while True:
+                # sort states by delta (descending)
+                states = np.argsort(deltas)[::-1]
+                for state in states:
+                    _, reward, end = self.grid_world.step(state, self.policy[state])
+                    if end:
+                        self.values[state] = reward
+                    else:
+                        old_value = self.values[state]
+                        self.values[state] = float("-inf")
+                        for action in range(self.grid_world.get_action_space()):
+                            next_state, reward, _ = self.grid_world.step(state, action)
+                            self.values[state] = max(self.values[state], reward + self.discount_factor * self.values[next_state])
+                        deltas[state] = abs(self.values[state] - old_value)
+                delta = max(deltas)
+                if delta < self.threshold:
+                    break
+        elif (mode == "prioritized_by_value"):
+            deltas = np.zeros(self.grid_world.get_state_space())
+            while True:
+                # sort states by value (descending)
+                states = np.argsort(self.values)[::-1]
+                for state in states:
+                    _, reward, end = self.grid_world.step(state, self.policy[state])
+                    if end:
+                        self.values[state] = reward
+                    else:
+                        old_value = self.values[state]
+                        self.values[state] = float("-inf")
+                        for action in range(self.grid_world.get_action_space()):
+                            next_state, reward, _ = self.grid_world.step(state, action)
+                            self.values[state] = max(self.values[state], reward + self.discount_factor * self.values[next_state])
+                        deltas[state] = abs(self.values[state] - old_value)
+                delta = max(deltas)
+                if delta < self.threshold:
+                    break
+        
+    def policy_improvement(self, mode):
+        """Improve the policy based on the evaluated values"""
+        # TODO: Implement the policy improvement step
+        for state in range(self.grid_world.get_state_space()):
+            _, _, end = self.grid_world.step(state, self.policy[state])
+            if end:
+                continue
+            best_action = None
+            best_q_value = float("-inf")
+            for action in range(self.grid_world.get_action_space()):
+                next_state, reward, _ = self.grid_world.step(state, action)
+                q_value = reward + self.discount_factor * self.values[next_state]
+                if q_value > best_q_value:
+                    best_q_value = q_value
+                    best_action = action
+            self.policy[state] = best_action
 
     def run(self) -> None:
         """Run the algorithm until convergence"""
         # TODO: Implement the async dynamic programming algorithm until convergence
-        raise NotImplementedError
+        self.policy_evaluation('prioritized_by_value')
+        self.policy_improvement('prioritized_by_value')
