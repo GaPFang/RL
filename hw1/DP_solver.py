@@ -289,6 +289,34 @@ class AsyncDynamicProgramming(DynamicProgramming):
                 delta = max(deltas)
                 if delta < self.threshold:
                     break
+        elif (mode == "RTDP"):
+            while True:
+                update = False
+                state = 0
+                while True:
+                    old_value = self.values[state]
+                    self.values[state] = float("-inf")
+                    best_next_state = None
+                    flag = False
+                    for action in range(self.grid_world.get_action_space()):
+                        next_state, reward, end = self.grid_world.step(state, action)
+                        if (end):
+                            flag = True
+                            self.values[state] = reward
+                            break
+                        if (next_state == state):
+                            continue
+                        if (reward + self.discount_factor * self.values[next_state] > self.values[state]):
+                            self.values[state] = reward + self.discount_factor * self.values[next_state]
+                            best_next_state = next_state
+                    delta = abs(self.values[state] - old_value)
+                    if (delta > self.threshold):
+                        update = True
+                    if (flag):
+                        break
+                    state = best_next_state
+                if (not update):
+                    break
         elif (mode == "prioritized_by_value"):
             deltas = np.zeros(self.grid_world.get_state_space())
             while True:
@@ -309,7 +337,7 @@ class AsyncDynamicProgramming(DynamicProgramming):
                 if delta < self.threshold:
                     break
         
-    def policy_improvement(self, mode):
+    def policy_improvement(self):
         """Improve the policy based on the evaluated values"""
         # TODO: Implement the policy improvement step
         for state in range(self.grid_world.get_state_space()):
@@ -329,5 +357,5 @@ class AsyncDynamicProgramming(DynamicProgramming):
     def run(self) -> None:
         """Run the algorithm until convergence"""
         # TODO: Implement the async dynamic programming algorithm until convergence
-        self.policy_evaluation('prioritized_by_value')
-        self.policy_improvement('prioritized_by_value')
+        self.policy_evaluation('prioritized_by_value')  # "in-place", "prioritized", "RTDP", "prioritized_by_value"
+        self.policy_improvement()
