@@ -216,18 +216,40 @@ class MonteCarloPolicyIteration(ModelFreeControl):
         self.lr      = learning_rate
         self.epsilon = epsilon
 
+    def epsilon_greedy(self, state_trace, action_trace, reward_trace) -> None:
+        """Epsilon-greedy policy for selecting action"""
+        while True:
+            current_state = state_trace[-1]
+            if np.random.rand() < self.epsilon:
+                action = np.random.choice(self.action_space)
+            else:
+                action = self.policy_index[current_state]
+            next_state, reward, done = self.grid_world.step(action)
+            state_trace.append(next_state)
+            action_trace.append(action)
+            reward_trace.append(reward)
+            if done:
+                break
+
     def policy_evaluation(self, state_trace, action_trace, reward_trace) -> None:
         """Evaluate the policy and update the values after one episode"""
         # TODO: Evaluate state value for each Q(s,a)
-        
-        raise NotImplementedError
+        G = 0
+        while action_trace:
+            state = state_trace.pop(-2)
+            action = action_trace.pop(-1)
+            reward = reward_trace.pop(-1)
+            # print(state, action, reward)
+            G = self.discount_factor * G + reward
+            self.q_values[state, action] += self.lr * (G - self.q_values[state, action])
         
 
     def policy_improvement(self) -> None:
         """Improve policy based on Q(s,a) after one episode"""
         # TODO: Improve the policy
-
-        raise NotImplementedError
+        for s in range(self.state_space):
+            self.policy[s] = 0
+            self.policy[s, self.q_values[s].argmax()] = 1
 
 
     def run(self, max_episode=1000) -> None:
@@ -241,8 +263,13 @@ class MonteCarloPolicyIteration(ModelFreeControl):
         while iter_episode < max_episode:
             # TODO: write your code here
             # hint: self.grid_world.reset() is NOT needed here
-            
-            raise NotImplementedError
+            # if iter_episode % 1000 == 0:
+            #     print(f"Episode: {iter_episode}")
+            self.get_policy_index()
+            self.epsilon_greedy(state_trace, action_trace, reward_trace)
+            self.policy_evaluation(state_trace, action_trace, reward_trace)
+            self.policy_improvement()
+            iter_episode += 1
 
 
 class SARSA(ModelFreeControl):
@@ -260,26 +287,43 @@ class SARSA(ModelFreeControl):
         self.lr      = learning_rate
         self.epsilon = epsilon
 
+    def epsilon_greedy(self, state) -> int:
+        """Epsilon-greedy policy for selecting action"""
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(self.action_space)
+        else:
+            return self.policy_index[state]
+
     def policy_eval_improve(self, s, a, r, s2, a2, is_done) -> None:
         """Evaluate the policy and update the values after one step"""
         # TODO: Evaluate Q value after one step and improve the policy
-        
-        raise NotImplementedError
+        if is_done:
+            self.q_values[s, a] += self.lr * (r - self.q_values[s, a])
+        else:
+            self.q_values[s, a] += self.lr * (r + self.discount_factor * self.q_values[s2, a2] - self.q_values[s, a])
 
     def run(self, max_episode=1000) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the TD policy evaluation with epsilon-greedy
         iter_episode = 0
         current_state = self.grid_world.reset()
-        prev_s = None
-        prev_a = None
-        prev_r = None
-        is_done = False
         while iter_episode < max_episode:
             # TODO: write your code here
             # hint: self.grid_world.reset() is NOT needed here
+            self.get_policy_index()
+            # if iter_episode % 1000 == 0:
+            #     print(f"Episode: {iter_episode}")
+            prev_a = None
+            is_done = False
+            prev_a = self.epsilon_greedy(current_state)
+            while not is_done:
+                next_state, reward, is_done = self.grid_world.step(prev_a)
+                action = self.epsilon_greedy(next_state)
+                self.policy_eval_improve(current_state, prev_a, reward, next_state, action, is_done)
+                current_state = next_state
+                prev_a = action
+            iter_episode += 1
             
-            raise NotImplementedError
 
 class Q_Learning(ModelFreeControl):
     def __init__(
@@ -298,33 +342,53 @@ class Q_Learning(ModelFreeControl):
         self.buffer            = deque(maxlen=buffer_size)
         self.update_frequency  = update_frequency
         self.sample_batch_size = sample_batch_size
+    
+    def epsilon_greedy(self, state) -> int:
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(self.action_space)
+        else:
+            return self.policy_index[state]
 
     def add_buffer(self, s, a, r, s2, d) -> None:
         # TODO: add new transition to buffer
-        raise NotImplementedError
+        self.buffer.append((s, a, r, s2, d))
 
     def sample_batch(self) -> np.ndarray:
         # TODO: sample a batch of index of transitions from the buffer
-        raise NotImplementedError
+        return np.random.choice(len(self.buffer), self.sample_batch_size)
 
-    def policy_eval_improve(self, s, a, r, s2, is_done) -> None:
+    def policy_eval_improve(self, B) -> None:
         """Evaluate the policy and update the values after one step"""
         #TODO: Evaluate Q value after one step and improve the policy
-        raise NotImplementedError
+        for b in B:
+            s, a, r, s2, d = self.buffer[b]
+            if d:
+                self.q_values[s, a] += self.lr * (r - self.q_values[s, a])
+            else:
+                self.q_values[s, a] += self.lr * (r + self.discount_factor * self.q_values[s2].max() - self.q_values[s, a])
 
     def run(self, max_episode=1000) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the Q_Learning algorithm
         iter_episode = 0
+        i = 0
         current_state = self.grid_world.reset()
-        prev_s = None
-        prev_a = None
-        prev_r = None
-        is_done = False
-        transition_count = 0
         while iter_episode < max_episode:
             # TODO: write your code here
             # hint: self.grid_world.reset() is NOT needed here
-
-            raise NotImplementedError
-            
+            self.get_policy_index()
+            # if iter_episode % 1000 == 0:
+            #     print(f"Episode: {iter_episode}")
+            prev_a = None
+            is_done = False
+            while not is_done:
+                prev_a = self.epsilon_greedy(current_state)
+                next_state, reward, is_done = self.grid_world.step(prev_a)
+                self.add_buffer(current_state, prev_a, reward, next_state, is_done)
+                i += 1
+                B = []
+                if i % self.update_frequency == 0:
+                    B = self.sample_batch()
+                    self.policy_eval_improve(B)
+                current_state = next_state
+            iter_episode += 1
