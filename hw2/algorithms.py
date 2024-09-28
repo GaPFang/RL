@@ -17,7 +17,7 @@ class ModelFreePrediction:
             grid_world (GridWorld): GridWorld object
             policy (np.ndarray): Stochastic policy representing action probabilities [state_space, action_space]
             discount_factor (float, optional): Discount factor gamma. Defaults to 1.0.
-            max_episdoe (int, optional): Maximum episdoe for data collection. Defaults to 10000.
+            max_episode (int, optional): Maximum episode for data collection. Defaults to 10000.
             seed (int): seed for sampling action from the policy
         """
         self.grid_world = grid_world
@@ -63,19 +63,32 @@ class MonteCarloPrediction(ModelFreePrediction):
             grid_world (GridWorld): GridWorld object
             policy (np.ndarray): Stochastic policy representing action probabilities [state_space, action_space]
             discount_factor (float, optional): Discount factor gamma. Defaults to 1.0.
-            max_episdoe (int, optional): Maximum episdoe for data collection. Defaults to 10000.
+            max_episode (int, optional): Maximum episode for data collection. Defaults to 10000.
         """
         super().__init__(grid_world,policy, discount_factor, max_episode, seed)
+        self.returns = [[] for _ in range(self.state_space)]
 
     def run(self) -> None:
         """Run the algorithm until max_episode"""
         # TODO: Update self.values with first-visit Monte-Carlo method
         current_state = self.grid_world.reset()
         while self.episode_counter < self.max_episode:
-            next_state, reward, done = self.collect_data()
-            continue
+            trajectory = []
+            while True:
+                next_state, reward, done = self.collect_data()
+                trajectory.append((current_state, reward))
+                current_state = next_state
+                if done:
+                    break
+            G = 0
+            for i in range(len(trajectory) - 1, -1, -1):
+                state, reward = trajectory[i]
+                G = self.discount_factor * G + reward
+                if state not in [s for s, _ in trajectory[:i]]:
+                    self.returns[state].append(G)
+                    self.values[state] = np.mean(self.returns[state])
 
-
+                
 class TDPrediction(ModelFreePrediction):
     def __init__(
             self, grid_world: GridWorld,learning_rate: float, policy: np.ndarray = None, discount_factor: float = 1.0, max_episode: int = 300, seed: int = 1):
@@ -85,7 +98,7 @@ class TDPrediction(ModelFreePrediction):
             grid_world (GridWorld): GridWorld object
             policy (np.ndarray): Stochastic policy representing action probabilities [state_space, action_space]
             discount_factor (float, optional): Discount factor gamma. Defaults to 1.0.
-            max_episdoe (int, optional): Maximum episdoe for data collection. Defaults to 10000.
+            max_episode (int, optional): Maximum episode for data collection. Defaults to 10000.
             learning_rate (float): learning rate for updating state value
         """
         super().__init__(grid_world,policy, discount_factor, max_episode, seed)
@@ -96,8 +109,14 @@ class TDPrediction(ModelFreePrediction):
         # TODO: Update self.values with TD(0) Algorithm
         current_state = self.grid_world.reset()
         while self.episode_counter < self.max_episode:
-            next_state, reward, done = self.collect_data()
-            continue
+            while True:
+                next_state, reward, done = self.collect_data()
+                if done:
+                    self.values[current_state] += self.lr * (reward - self.values[current_state])
+                    current_state = next_state
+                    break
+                self.values[current_state] += self.lr * (reward + self.discount_factor * self.values[next_state] - self.values[current_state])
+                current_state = next_state
 
 
 class NstepTDPrediction(ModelFreePrediction):
@@ -109,7 +128,7 @@ class NstepTDPrediction(ModelFreePrediction):
             grid_world (GridWorld): GridWorld object
             policy (np.ndarray): Stochastic policy representing action probabilities [state_space, action_space]
             discount_factor (float, optional): Discount factor gamma. Defaults to 1.0.
-            max_episdoe (int, optional): Maximum episdoe for data collection. Defaults to 10000.
+            max_episode (int, optional): Maximum episode for data collection. Defaults to 10000.
             learning_rate (float): learning rate for updating state value
             num_step (int): n_step look ahead for TD
         """
@@ -122,8 +141,27 @@ class NstepTDPrediction(ModelFreePrediction):
         # TODO: Update self.values with N-step TD Algorithm
         current_state = self.grid_world.reset()
         while self.episode_counter < self.max_episode:
-            next_state, reward, done = self.collect_data()
-            continue
+            T = np.inf
+            t = 0
+            rewards = [0]
+            states = [current_state]
+            while True:
+                if t < T:
+                    next_state, reward, done = self.collect_data()
+                    states.append(next_state)
+                    rewards.append(reward)
+                    if done:
+                        T = t + 1
+                tau = t - self.n + 1
+                # print(tau, self.n, len(rewards))
+                if tau >= 0:
+                    G = sum([self.discount_factor ** (i - tau - 1) * rewards[i] for i in range(tau + 1, min(tau + self.n, T) + 1)])
+                    if tau + self.n < T:
+                        G += self.discount_factor ** self.n * self.values[states[tau + self.n]]
+                    self.values[states[tau]] += self.lr * (G - self.values[states[tau]])
+                if tau == T - 1:
+                    break
+                t += 1
 
 # =========================== 2.2 model free control ===========================
 class ModelFreeControl:
