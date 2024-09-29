@@ -1,8 +1,10 @@
 import numpy as np
 import json
 from collections import deque
+import wandb
 
 from gridworld import GridWorld
+
 
 # =========================== 2.1 model free prediction ===========================
 class ModelFreePrediction:
@@ -215,8 +217,21 @@ class MonteCarloPolicyIteration(ModelFreeControl):
         super().__init__(grid_world, discount_factor)
         self.lr      = learning_rate
         self.epsilon = epsilon
+        config = {
+            "discount_factor": discount_factor,
+            "learning_rate": learning_rate,
+            "epsilon": epsilon
+        }
+        wandb.init(
+            project="RL_hw2",
+            name="MC" + json.dumps(config),
+            config=config
+        )
+        self.count = None
+        self.avg_rewards = None
+        self.estimated_losses = None
 
-    def epsilon_greedy(self, state_trace, action_trace, reward_trace) -> None:
+    def epsilon_greedy(self, state_trace, action_trace, reward_trace, iter_episode) -> None:
         """Epsilon-greedy policy for selecting action"""
         while True:
             current_state = state_trace[-1]
@@ -228,10 +243,12 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             state_trace.append(next_state)
             action_trace.append(action)
             reward_trace.append(reward)
+            self.count += 1
+            self.avg_rewards[iter_episode] += reward
             if done:
                 break
 
-    def policy_evaluation(self, state_trace, action_trace, reward_trace) -> None:
+    def policy_evaluation(self, state_trace, action_trace, reward_trace, iter_episode) -> None:
         """Evaluate the policy and update the values after one episode"""
         # TODO: Evaluate state value for each Q(s,a)
         G = 0
@@ -241,6 +258,7 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             reward = reward_trace.pop(-1)
             # print(state, action, reward)
             G = self.discount_factor * G + reward
+            self.estimated_losses[iter_episode] += (G - self.q_values[state, action])
             self.q_values[state, action] += self.lr * (G - self.q_values[state, action])
         
 
@@ -256,6 +274,8 @@ class MonteCarloPolicyIteration(ModelFreeControl):
         """Run the algorithm until convergence."""
         # TODO: Implement the Monte Carlo policy evaluation with epsilon-greedy
         iter_episode = 0
+        self.avg_rewards = np.zeros(max_episode)
+        self.estimated_losses = np.zeros(max_episode)
         current_state = self.grid_world.reset()
         state_trace   = [current_state]
         action_trace  = []
@@ -265,11 +285,19 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             # hint: self.grid_world.reset() is NOT needed here
             # if iter_episode % 1000 == 0:
             #     print(f"Episode: {iter_episode}")
+            self.count = 0
             self.get_policy_index()
-            self.epsilon_greedy(state_trace, action_trace, reward_trace)
-            self.policy_evaluation(state_trace, action_trace, reward_trace)
+            self.epsilon_greedy(state_trace, action_trace, reward_trace, iter_episode)
+            self.policy_evaluation(state_trace, action_trace, reward_trace, iter_episode)
             self.policy_improvement()
+            self.avg_rewards[iter_episode] = self.avg_rewards[iter_episode] / self.count
+            self.estimated_losses[iter_episode] = self.estimated_losses[iter_episode] / self.count
+            wandb.log({
+                "avg_rewards": np.mean(self.avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
+                "estimated_losses": np.mean(self.estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+            })
             iter_episode += 1
+        wandb.finish()
 
 
 class SARSA(ModelFreeControl):
@@ -286,6 +314,16 @@ class SARSA(ModelFreeControl):
         super().__init__(grid_world, discount_factor)
         self.lr      = learning_rate
         self.epsilon = epsilon
+        config = {
+            "discount_factor": discount_factor,
+            "learning_rate": learning_rate,
+            "epsilon": epsilon
+        }
+        wandb.init(
+            project="RL_hw2",
+            name="SARSA" + json.dumps(config),
+            config=config
+        )
 
     def epsilon_greedy(self, state) -> int:
         """Epsilon-greedy policy for selecting action"""
@@ -306,6 +344,8 @@ class SARSA(ModelFreeControl):
         """Run the algorithm until convergence."""
         # TODO: Implement the TD policy evaluation with epsilon-greedy
         iter_episode = 0
+        avg_rewards = np.zeros(max_episode)
+        estimated_losses = np.zeros(max_episode)
         current_state = self.grid_world.reset()
         while iter_episode < max_episode:
             # TODO: write your code here
@@ -319,10 +359,19 @@ class SARSA(ModelFreeControl):
             while not is_done:
                 next_state, reward, is_done = self.grid_world.step(prev_a)
                 action = self.epsilon_greedy(next_state)
+                avg_rewards[iter_episode] += reward
+                estimated_losses[iter_episode] += (reward + self.discount_factor * self.q_values[next_state, action] - self.q_values[current_state, prev_a])
                 self.policy_eval_improve(current_state, prev_a, reward, next_state, action, is_done)
                 current_state = next_state
                 prev_a = action
+            avg_rewards[iter_episode] = avg_rewards[iter_episode] / self.grid_world.get_step_count()
+            estimated_losses[iter_episode] = estimated_losses[iter_episode] / self.grid_world.get_step_count()
+            wandb.log({
+                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
+                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+            })
             iter_episode += 1
+        wandb.finish()
             
 
 class Q_Learning(ModelFreeControl):
@@ -342,6 +391,16 @@ class Q_Learning(ModelFreeControl):
         self.buffer            = deque(maxlen=buffer_size)
         self.update_frequency  = update_frequency
         self.sample_batch_size = sample_batch_size
+        config = {
+            "discount_factor": discount_factor,
+            "learning_rate": learning_rate,
+            "epsilon": epsilon
+        }
+        wandb.init(
+            project="RL_hw2",
+            name="Q_Learning" + json.dumps(config),
+            config=config
+        )
     
     def epsilon_greedy(self, state) -> int:
         if np.random.rand() < self.epsilon:
@@ -372,6 +431,8 @@ class Q_Learning(ModelFreeControl):
         # TODO: Implement the Q_Learning algorithm
         iter_episode = 0
         i = 0
+        avg_rewards = np.zeros(max_episode)
+        estimated_losses = np.zeros(max_episode)
         current_state = self.grid_world.reset()
         while iter_episode < max_episode:
             # TODO: write your code here
@@ -381,9 +442,12 @@ class Q_Learning(ModelFreeControl):
             #     print(f"Episode: {iter_episode}")
             prev_a = None
             is_done = False
+            count = 0
             while not is_done:
                 prev_a = self.epsilon_greedy(current_state)
                 next_state, reward, is_done = self.grid_world.step(prev_a)
+                avg_rewards[iter_episode] += reward
+                estimated_losses[iter_episode] += (reward + self.discount_factor * self.q_values[next_state].max() - self.q_values[current_state, prev_a])
                 self.add_buffer(current_state, prev_a, reward, next_state, is_done)
                 i += 1
                 B = []
@@ -391,4 +455,12 @@ class Q_Learning(ModelFreeControl):
                     B = self.sample_batch()
                     self.policy_eval_improve(B)
                 current_state = next_state
+                count += 1
+            avg_rewards[iter_episode] = avg_rewards[iter_episode] / count
+            estimated_losses[iter_episode] = estimated_losses[iter_episode] / count
+            wandb.log({
+                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
+                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+            })
             iter_episode += 1
+        wandb.finish()
