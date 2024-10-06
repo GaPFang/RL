@@ -223,7 +223,7 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             "epsilon": epsilon
         }
         wandb.init(
-            project="RL_hw2",
+            project="RL_hw2_MC",
             name="MC" + json.dumps(config),
             config=config
         )
@@ -293,8 +293,8 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             self.avg_rewards[iter_episode] = self.avg_rewards[iter_episode] / self.count
             self.estimated_losses[iter_episode] = self.estimated_losses[iter_episode] / self.count
             wandb.log({
-                "avg_rewards": np.mean(self.avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
-                "estimated_losses": np.mean(self.estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+                "avg_rewards": np.mean(self.avg_rewards[max(0, iter_episode - 9):(iter_episode + 1)]),
+                "estimated_losses": np.mean(self.estimated_losses[max(0, iter_episode - 9):(iter_episode + 1)])
             })
             iter_episode += 1
         wandb.finish()
@@ -320,7 +320,7 @@ class SARSA(ModelFreeControl):
             "epsilon": epsilon
         }
         wandb.init(
-            project="RL_hw2",
+            project="RL_hw2_SARSA",
             name="SARSA" + json.dumps(config),
             config=config
         )
@@ -356,6 +356,7 @@ class SARSA(ModelFreeControl):
             prev_a = None
             is_done = False
             prev_a = self.epsilon_greedy(current_state)
+            count = 0
             while not is_done:
                 next_state, reward, is_done = self.grid_world.step(prev_a)
                 action = self.epsilon_greedy(next_state)
@@ -364,11 +365,12 @@ class SARSA(ModelFreeControl):
                 self.policy_eval_improve(current_state, prev_a, reward, next_state, action, is_done)
                 current_state = next_state
                 prev_a = action
-            avg_rewards[iter_episode] = avg_rewards[iter_episode] / self.grid_world.get_step_count()
-            estimated_losses[iter_episode] = estimated_losses[iter_episode] / self.grid_world.get_step_count()
+                count += 1
+            avg_rewards[iter_episode] = avg_rewards[iter_episode] / count
+            estimated_losses[iter_episode] = estimated_losses[iter_episode] / count
             wandb.log({
-                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
-                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 9):(iter_episode + 1)]),
+                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 9):(iter_episode + 1)])
             })
             iter_episode += 1
         wandb.finish()
@@ -397,7 +399,7 @@ class Q_Learning(ModelFreeControl):
             "epsilon": epsilon
         }
         wandb.init(
-            project="RL_hw2",
+            project="RL_hw2_Q_Learning",
             name="Q_Learning" + json.dumps(config),
             config=config
         )
@@ -459,8 +461,8 @@ class Q_Learning(ModelFreeControl):
             avg_rewards[iter_episode] = avg_rewards[iter_episode] / count
             estimated_losses[iter_episode] = estimated_losses[iter_episode] / count
             wandb.log({
-                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 10):(iter_episode + 1)]),
-                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 10):(iter_episode + 1)])
+                "avg_rewards": np.mean(avg_rewards[max(0, iter_episode - 9):(iter_episode + 1)]),
+                "estimated_losses": np.mean(estimated_losses[max(0, iter_episode - 9):(iter_episode + 1)])
             })
             iter_episode += 1
         wandb.finish()
