@@ -13,6 +13,7 @@ from algorithms import (
 from gridworld import GridWorld
 
 np.set_printoptions(threshold=np.inf, linewidth=np.inf)
+gt = np.load('sample_solutions/prediction_GT.npy', allow_pickle=True)
 
 # 2-1
 STEP_REWARD     = -0.1
@@ -25,7 +26,7 @@ MAX_EPISODE     = 300
 LEARNING_RATE   = 0.01
 NUM_STEP        = 3
 # 2-2
-EPSILON           = 0.2
+EPSILON           = 0.1
 BUFFER_SIZE       = 10000
 UPDATE_FREQUENCY  = 200
 SAMPLE_BATCH_SIZE = 500
@@ -62,15 +63,33 @@ def init_grid_world(maze_file: str = "maze.txt", init_pos: list = None):
 
 
 def run_MC_prediction(grid_world: GridWorld,seed):
-    print(f"Run MC prediction. Seed:{seed}")
-    prediction = MonteCarloPrediction(
-        grid_world,
-        discount_factor=DISCOUNT_FACTOR,
-        policy = POLICY,
-        max_episode= MAX_EPISODE,
-        seed = seed
-    )
-    prediction.run()
+    # print(f"Run MC prediction. Seed:{seed}")
+    # prediction = MonteCarloPrediction(
+    #     grid_world,
+    #     discount_factor=DISCOUNT_FACTOR,
+    #     policy = POLICY,
+    #     max_episode= MAX_EPISODE,
+    #     seed = seed
+    # )
+    # prediction.run()
+    values = np.zeros((50, 22))
+    for i in range(1, 51):
+        print(f"Run MC prediction. Seed:{i}")
+        prediction = MonteCarloPrediction(
+            grid_world,
+            discount_factor=DISCOUNT_FACTOR,
+            policy = POLICY,
+            max_episode= MAX_EPISODE,
+            seed = i
+        )
+        prediction.run()
+        values[i - 1] = prediction.get_all_state_values()
+    mean = np.mean(values, axis=0)
+    bias = np.mean(values - gt, axis=0)
+    variance = np.var(values, axis=0)
+    print(f"Mean: {np.mean(mean)}")
+    print(f"Bias: {np.mean(bias)}")
+    print(f"Variance: {np.mean(variance)}")
     grid_world.visualize(
         prediction.get_all_state_values(),
         title=f"Monte Carlo Prediction",
@@ -84,16 +103,35 @@ def run_MC_prediction(grid_world: GridWorld,seed):
 
 
 def run_TD_prediction(grid_world: GridWorld, seed):
-    print(f"Run TD(0) prediction. Seed:{seed}")
-    prediction = TDPrediction(
-        grid_world,
-        discount_factor=DISCOUNT_FACTOR,
-        policy = POLICY,
-        max_episode= MAX_EPISODE,
-        learning_rate=LEARNING_RATE,
-        seed = seed
-    )
-    prediction.run()
+    # print(f"Run TD(0) prediction. Seed:{seed}")
+    # prediction = TDPrediction(
+    #     grid_world,
+    #     discount_factor=DISCOUNT_FACTOR,
+    #     policy = POLICY,
+    #     max_episode= MAX_EPISODE,
+    #     learning_rate=LEARNING_RATE,
+    #     seed = seed
+    # )
+    # prediction.run()
+    values = np.zeros((50, 22))
+    for i in range(1, 51):
+        print(f"Run TD(0) prediction. Seed:{i}")
+        prediction = TDPrediction(
+            grid_world,
+            discount_factor=DISCOUNT_FACTOR,
+            policy = POLICY,
+            max_episode= MAX_EPISODE,
+            learning_rate=LEARNING_RATE,
+            seed = i
+        )
+        prediction.run()
+        values[i - 1] = prediction.get_all_state_values()
+    mean = np.mean(values, axis=0)
+    bias = np.mean(values - gt, axis=0)
+    variance = np.var(values, axis=0)
+    print(f"Mean: {np.mean(mean)}")
+    print(f"Bias: {np.mean(bias)}")
+    print(f"Variance: {np.mean(variance)}")
     grid_world.visualize(
         prediction.get_all_state_values(),
         title=f"TD(0) Prediction",
@@ -214,10 +252,10 @@ if __name__ == "__main__":
     # 2-1
     run_MC_prediction(grid_world,seed)
     run_TD_prediction(grid_world,seed)
-    run_NstepTD_prediction(grid_world,seed)
+    # run_NstepTD_prediction(grid_world,seed)
 
     # 2-2
-    grid_world = init_grid_world("maze.txt")
-    run_MC_policy_iteration(grid_world, 512000)
-    run_SARSA(grid_world, 512000)
-    run_Q_Learning(grid_world, 50000)
+    # grid_world = init_grid_world("maze.txt")
+    # run_MC_policy_iteration(grid_world, 512000)
+    # run_SARSA(grid_world, 512000)
+    # run_Q_Learning(grid_world, 50000)

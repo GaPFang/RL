@@ -5,7 +5,6 @@ import wandb
 
 from gridworld import GridWorld
 
-
 # =========================== 2.1 model free prediction ===========================
 class ModelFreePrediction:
     """
@@ -258,7 +257,7 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             reward = reward_trace.pop(-1)
             # print(state, action, reward)
             G = self.discount_factor * G + reward
-            self.estimated_losses[iter_episode] += (G - self.q_values[state, action])
+            self.estimated_losses[iter_episode] += abs(G - self.q_values[state, action])
             self.q_values[state, action] += self.lr * (G - self.q_values[state, action])
         
 
@@ -361,7 +360,7 @@ class SARSA(ModelFreeControl):
                 next_state, reward, is_done = self.grid_world.step(prev_a)
                 action = self.epsilon_greedy(next_state)
                 avg_rewards[iter_episode] += reward
-                estimated_losses[iter_episode] += (reward + self.discount_factor * self.q_values[next_state, action] - self.q_values[current_state, prev_a])
+                estimated_losses[iter_episode] += abs(reward + self.discount_factor * self.q_values[next_state, action] - self.q_values[current_state, prev_a])
                 self.policy_eval_improve(current_state, prev_a, reward, next_state, action, is_done)
                 current_state = next_state
                 prev_a = action
@@ -449,7 +448,7 @@ class Q_Learning(ModelFreeControl):
                 prev_a = self.epsilon_greedy(current_state)
                 next_state, reward, is_done = self.grid_world.step(prev_a)
                 avg_rewards[iter_episode] += reward
-                estimated_losses[iter_episode] += (reward + self.discount_factor * self.q_values[next_state].max() - self.q_values[current_state, prev_a])
+                estimated_losses[iter_episode] += abs(reward + self.discount_factor * self.q_values[next_state].max() - self.q_values[current_state, prev_a])
                 self.add_buffer(current_state, prev_a, reward, next_state, is_done)
                 i += 1
                 B = []
