@@ -439,7 +439,39 @@ class GridWorld:
             tuple: next_state, reward, done, truncation
         """
         # TODO implement the step function here
-        raise NotImplementedError
+
+        self._step_count += 1
+
+        state_coord = self._state_list[self._current_state]
+        if self._is_goal_state(state_coord):
+            next_init_state = self.reset()
+            return next_init_state, self._goal_reward, True, False
+        if self._is_trap_state(state_coord):
+            next_init_state = self.reset()
+            return next_init_state, self._trap_reward, True, False
+        if self._is_exit_state(state_coord):
+            next_init_state = self.reset()
+            return next_init_state, self._exit_reward, True, False
+
+        next_state_coord = self._get_next_state(state_coord, action)
+        next_state = self._state_list.index(next_state_coord)
+        self._current_state = next_state
+        if self._is_opened:
+            next_state += len(self._state_list)
+
+        if self._is_lava_state(next_state_coord):
+            next_init_state = self.reset()
+            return next_init_state, self._trap_reward, True, False
+        if self._is_bait_state(next_state_coord):
+            self.bite()
+            return next_state, self._bait_reward, False, False
+        if self._is_key_state(next_state_coord):
+            self.open_door()
+        
+        if (self._step_count >= self.max_step):
+            return next_state, self.step_reward, False, True
+
+        return next_state, self.step_reward, False, False
 
     def reset(self) -> int:
         """Reset the environment
@@ -447,8 +479,13 @@ class GridWorld:
         Returns:
             int: initial state
         """
-        # TODO implement the reset function here
-        raise NotImplementedError
+
+        self._current_state = np.random.choice(self._init_states)
+        self._step_count = 0
+        self.place_bait()
+        self.close_door()
+        return self._current_state
+
 
     #############################
     # Visualize the environment #
