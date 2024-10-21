@@ -9,6 +9,8 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
+import os
+
 
 warnings.filterwarnings("ignore")
 register(
@@ -18,13 +20,13 @@ register(
 
 # Set hyper params (configurations) for training
 my_config = {
-    "run_id": "example",
+    "run_id": f"{len(os.listdir('models'))}",
 
     "algorithm": PPO,
     "policy_network": "MlpPolicy",
-    "save_path": "models/sample_model",
+    "save_path": f"models/{len(os.listdir('models'))}",
 
-    "epoch_num": 5,
+    "epoch_num": 100,
     "timesteps_per_epoch": 1000,
     "eval_episode_num": 10,
     "learning_rate": 1e-4,
@@ -74,13 +76,13 @@ def train(eval_env, model, config):
         )
 
         ### Evaluation
-        # print(config["run_id"])
-        # print("Epoch: ", epoch)
+        print(config["run_id"])
+        print("Epoch: ", epoch)
         avg_score, avg_highest = eval(eval_env, model, config["eval_episode_num"])
         
-        # print("Avg_score:  ", avg_score)
-        # print("Avg_highest:", avg_highest)
-        # print()
+        print("Avg_score:  ", avg_score)
+        print("Avg_highest:", avg_highest)
+        print()
         # wandb.log(
         #     {"avg_highest": avg_highest,
         #      "avg_score": avg_score}
@@ -92,9 +94,9 @@ def train(eval_env, model, config):
             print("Saving Model")
             current_best = avg_score
             save_path = config["save_path"]
-            # model.save(f"{save_path}/{epoch}")
+            model.save(f"{save_path}/{epoch}")
 
-        # print("---------------")
+        print("---------------")
 
 
 if __name__ == "__main__":

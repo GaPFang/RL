@@ -54,9 +54,11 @@ class My2048Env(gym.Env):
 
         # Maintain own idea of game score, separate from rewards
         self.score = 0
+        self.best_reward = 0
 
         # Foul counts for illegal moves
         self.foul_count = 0
+        self.max_foul = 100
 
         # Members for gym implementation
         self.action_space = spaces.Discrete(4)
@@ -124,6 +126,11 @@ class My2048Env(gym.Env):
                     [0  , 0  , 0  , 0  ],
                     [0  , 0  , 0  , 0  ]])
             reward += 0
+
+            if (reward > self.best_reward):
+                self.best_reward = reward
+
+            self.set_illegal_move_reward(-self.best_reward * 8)
             
         except IllegalMove:
             logging.debug("Illegal move")
@@ -131,14 +138,18 @@ class My2048Env(gym.Env):
             reward = self.illegal_move_reward
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
-            done = True
+            # done = True
+            self.foul_count += 1
+            if self.foul_count >= self.max_foul:
+                done = True
+
 
         truncate = False
         info['highest'] = self.highest()
         info['score']   = self.score
 
         # Return observation (board state), reward, done, truncate and info dict
-        return stack(self.Matrix), reward, done, truncate, info
+        return stack(self.Matrix), reward / 2048, done, truncate, info
 
     def reset(self, seed=None, options=None):
         self.seed(seed=seed)
