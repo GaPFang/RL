@@ -5,8 +5,11 @@ from gymnasium.envs.registration import register
 import wandb
 from wandb.integration.sb3 import WandbCallback
 
+import torch
+
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
+from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
 import os
@@ -26,10 +29,14 @@ my_config = {
     "policy_network": "MlpPolicy",
     "save_path": f"models/{len(os.listdir('models'))}",
 
-    "epoch_num": 100,
+    "epoch_num": 10000,
     "timesteps_per_epoch": 1000,
     "eval_episode_num": 10,
     "learning_rate": 1e-4,
+
+    "policy_kwargs": dict(
+        net_arch=[dict(pi=[64, 64, 64, 64], vf=[64, 64])]
+    ),
 }
 
 
@@ -69,10 +76,10 @@ def train(eval_env, model, config):
         model.learn(
             total_timesteps=config["timesteps_per_epoch"],
             reset_num_timesteps=False,
-            # callback=WandbCallback(
-            #     gradient_save_freq=100,
-            #     verbose=2,
-            # ),
+            callback=WandbCallback(
+                gradient_save_freq=100,
+                verbose=2,
+            ),
         )
 
         ### Evaluation
@@ -83,10 +90,10 @@ def train(eval_env, model, config):
         print("Avg_score:  ", avg_score)
         print("Avg_highest:", avg_highest)
         print()
-        # wandb.log(
-        #     {"avg_highest": avg_highest,
-        #      "avg_score": avg_score}
-        # )
+        wandb.log(
+            {"avg_highest": avg_highest,
+             "avg_score": avg_score}
+        )
         
 
         ### Save best model
@@ -102,15 +109,15 @@ def train(eval_env, model, config):
 if __name__ == "__main__":
 
     # Create wandb session (Uncomment to enable wandb logging)
-    # run = wandb.init(
-    #     project="assignment_3",
-    #     config=my_config,
-    #     sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-    #     id=my_config["run_id"]
-    # )
+    run = wandb.init(
+        project="RL_hw3",
+        config=my_config,
+        sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+        id=my_config["run_id"]
+    )
 
     # Create training environment 
-    num_train_envs = 2
+    num_train_envs = 5
     train_env = DummyVecEnv([make_env for _ in range(num_train_envs)])
 
     # Create evaluation environment 
@@ -124,6 +131,9 @@ if __name__ == "__main__":
         verbose=2,
         tensorboard_log=my_config["run_id"],
         learning_rate=my_config["learning_rate"],
+        policy_kwargs=my_config["policy_kwargs"]
     )
+
+    print(model.policy)
 
     train(eval_env, model, my_config)

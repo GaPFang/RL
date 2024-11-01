@@ -64,7 +64,8 @@ class My2048Env(gym.Env):
         self.action_space = spaces.Discrete(4)
         # Suppose that the maximum tile is as if you have powers of 2 across the board.
         layers = self.squares
-        self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
+        # self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
+        self.observation_space = spaces.MultiBinary((layers, self.w, self.h))
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(0.)
@@ -121,11 +122,11 @@ class My2048Env(gym.Env):
 
             # TODO: Add reward according to weighted states (optional)
             weight = np.array([
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ]])
-            reward += 0
+                    [2  , 0  , 0  , 2  ],
+                    [0  , -4  , -4  , 0  ],
+                    [0  , -4  , -4  , 0  ],
+                    [2  , 0  , 0  , 2  ]])
+            reward += np.sum(weight * self.Matrix)
 
             if (reward > self.best_reward):
                 self.best_reward = reward

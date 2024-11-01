@@ -27,30 +27,29 @@ def evaluation(env, model, render_last, eval_num=100):
             obs, reward, done, _, info = env.step(action)
 
         # Render the last board state of each episode
-        # print("Last board state:")
-        # env.render()
+        print("seed:", seed)
+        env.render()
 
         score.append(info['score'])
         highest.append(info['highest'])
 
     ### Render last rollout
-    if render_last:
-        print("Rendering last rollout")
-        done = False
-        obs, info = env.reset(seed=eval_num-1)
-        env.render()
+    # if render_last:
+    #     print("Rendering last rollout")
+    #     done = False
+    #     obs, info = env.reset(seed=eval_num-1)
+    #     env.render()
 
-        while not done:
-            action, _state = model.predict(obs, deterministic=True)
-            obs, reward, done, _, info = env.step(action)
-            env.render()
+    #     while not done:
+    #         action, _state = model.predict(obs, deterministic=True)
+    #         obs, reward, done, _, info = env.step(action)
+    #         env.render()
 
         
     return score, highest
 
-
 if __name__ == "__main__":
-    model_path = "models/sample_model/0"  # Change path name to load different models
+    model_path = "models/10/247"  # Change path name to load different models
     env = gym.make('2048-eval')
 
     ### Load model with SB3
