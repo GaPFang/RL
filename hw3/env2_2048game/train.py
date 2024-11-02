@@ -25,7 +25,7 @@ register(
 my_config = {
     "run_id": f"{len(os.listdir('models'))}",
 
-    "algorithm": PPO,
+    "algorithm": A2C,
     "policy_network": "MlpPolicy",
     "save_path": f"models/{len(os.listdir('models'))}",
 
