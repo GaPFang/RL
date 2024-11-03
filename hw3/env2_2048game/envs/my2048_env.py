@@ -58,7 +58,7 @@ class My2048Env(gym.Env):
 
         # Foul counts for illegal moves
         self.foul_count = 0
-        self.max_foul = 100
+        self.max_foul = 10
 
         # Members for gym implementation
         self.action_space = spaces.Discrete(4)
@@ -121,12 +121,12 @@ class My2048Env(gym.Env):
             reward = float(score)
 
             # TODO: Add reward according to weighted states (optional)
-            reward -= self.best_reward / 8
+            # reward -= self.best_reward / 8
 
             weight = np.array([
                     [0  , 0  , 0  , 0  ],
-                    [0  , -1  , -1  , 0  ],
-                    [0  , -1  , -1  , 0  ],
+                    [0  , 0  , 0  , 0  ],
+                    [0  , 0  , 0  , 0  ],
                     [0  , 0  , 0  , 0  ]])
             reward += np.sum(weight * self.Matrix)
 
@@ -152,7 +152,9 @@ class My2048Env(gym.Env):
         info['score']   = self.score
 
         # Return observation (board state), reward, done, truncate and info dict
-        return stack(self.Matrix), reward / 1024, done, truncate, info
+        # return stack(self.Matrix), reward / 1024, done, truncate, info
+        # log2(reward)
+        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))), done, truncate, info
 
     def reset(self, seed=None, options=None):
         self.seed(seed=seed)
