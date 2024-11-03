@@ -35,7 +35,7 @@ my_config = {
     "learning_rate": 1e-4,
 
     "policy_kwargs": dict(
-        net_arch=[dict(pi=[64, 64, 64, 32, 32], vf=[64, 32])]
+        net_arch=[dict(pi=[64, 64], vf=[64, 32])]
     ),
 }
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     )
 
     # Create training environment 
-    num_train_envs = 5
+    num_train_envs = 10
     train_env = DummyVecEnv([make_env for _ in range(num_train_envs)])
 
     # Create evaluation environment 
