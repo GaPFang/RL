@@ -154,7 +154,7 @@ class My2048Env(gym.Env):
         # Return observation (board state), reward, done, truncate and info dict
         # return stack(self.Matrix), reward / 1024, done, truncate, info
         # log2(reward)
-        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))) / 10, done, truncate, info
+        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))) / 5, done, truncate, info
 
     def reset(self, seed=None, options=None):
         self.seed(seed=seed)

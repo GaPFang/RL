@@ -35,7 +35,7 @@ my_config = {
     "learning_rate": 1e-4,
 
     "policy_kwargs": dict(
-        net_arch=[dict(pi=[64, 32, 32], vf=[32, 32])]
+        net_arch=[dict(pi=[32, 32, 16, 16], vf=[32, 16])]
     ),
 }
 
