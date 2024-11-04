@@ -121,8 +121,8 @@ class My2048Env(gym.Env):
             reward = float(score)
 
             # TODO: Add reward according to weighted states (optional)
-            if reward == 0:
-                reward -= self.best_reward
+            # if reward == 0:
+            #     reward -= self.best_reward
 
             weight = np.array([
                     [0  , 0  , 0  , 0  ],
