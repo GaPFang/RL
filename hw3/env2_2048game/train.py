@@ -8,7 +8,7 @@ from wandb.integration.sb3 import WandbCallback
 import torch
 
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder, SubprocVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
@@ -117,9 +117,8 @@ if __name__ == "__main__":
     )
 
     # Create training environment 
-    num_train_envs = 10
-    # train_env = DummyVecEnv([make_env for _ in range(num_train_envs)])
-    train_env = SubprocVecEnv([make_env for _ in range(num_train_envs)])
+    num_train_envs = 20
+    train_env = DummyVecEnv([make_env for _ in range(num_train_envs)])
 
     # Create evaluation environment 
     eval_env = DummyVecEnv([make_env])  
