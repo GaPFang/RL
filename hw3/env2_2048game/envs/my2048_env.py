@@ -155,9 +155,9 @@ class My2048Env(gym.Env):
         info['score']   = self.score
 
         # Return observation (board state), reward, done, truncate and info dict
-        return stack(self.Matrix), reward, done, truncate, info
+        # return stack(self.Matrix), reward, done, truncate, info
         # log2(reward)
-        # return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))), done, truncate, info
+        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))), done, truncate, info
 
     def reset(self, seed=None, options=None):
         self.seed(seed=seed)

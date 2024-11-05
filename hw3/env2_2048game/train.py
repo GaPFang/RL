@@ -63,6 +63,11 @@ register(
     entry_point='envs:My2048Env'
 )
 
+register(
+    id='2048-eval',
+    entry_point='envs:Eval2048Env'
+)
+
 # Set hyper params (configurations) for training
 my_config = {
     "run_id": f"{len(os.listdir('models'))}",
@@ -82,9 +87,14 @@ my_config = {
     ),
 }
 
-def make_env():
+def make_train_env():
     env = gym.make('2048-v0')
-    env = LogRewardWrapper(env)
+    # env = LogRewardWrapper(env)
+    return env
+
+def make_eval_env():
+    env = gym.make('2048-eval')
+    # env = LogRewardWrapper(env)
     return env
 
 def eval(env, model, eval_episode_num):
@@ -161,10 +171,10 @@ if __name__ == "__main__":
 
     # Create training environment 
     num_train_envs = 10
-    train_env = DummyVecEnv([make_env for _ in range(num_train_envs)])
+    train_env = DummyVecEnv([make_train_env for _ in range(num_train_envs)])
 
     # Create evaluation environment 
-    eval_env = DummyVecEnv([make_env])  
+    eval_env = DummyVecEnv([make_eval_env])  
 
     # Create model from loaded config and train
     # Note: Set verbose to 0 if you don't want info messages
