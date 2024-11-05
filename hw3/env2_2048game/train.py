@@ -17,36 +17,40 @@ from stable_baselines3 import A2C, DQN, PPO, SAC
 
 import os
 
-
 class FeatureExtractor2048(BaseFeaturesExtractor):
-    def __init__(self, observation_space, features_dim: int = 52):
+    def __init__(self, observation_space, features_dim: int = 6144):
         super().__init__(observation_space, features_dim)
-
+        self.adjacent_pairs = [
+            ((i, j), (i + di, j + dj))
+            for i in range(4) for j in range(4)
+            for di, dj in [(1, 0), (0, 1)]
+            if 0 <= i + di < 4 and 0 <= j + dj < 4
+        ]
+    
     def unstack(self, layered):
-        representation = np.arange(16, dtype=int)
-        flat = np.sum(layered * representation[:, np.newaxis, np.newaxis], axis=1)
-        flat = flat.reshape((layered.shape[0], 4, 4)).astype(int)
+        # Replace NumPy with PyTorch operations
+        representation = torch.arange(16, device=layered.device, dtype=torch.float32)
+        flat = torch.sum(layered * representation.view(-1, 1, 1), dim=1)
+        flat = flat.view(layered.size(0), 4, 4).to(torch.int)
         return flat
-
-    def f2(self, x):
-        x_vert = ((x[:, :3, :] << 4) + x[:, 1:, :]).reshape((x.shape[0], 12))
-        x_hor = ((x[:, :, :3] << 4) + x[:, :, 1:]).reshape((x.shape[0], 12))
-        return np.concatenate([x_vert, x_hor], axis=1)
-
-    def f3(self, x):
-        x_vert = ((x[:, :2, :] << 8) + (x[:, 1:3, :] << 4) + x[:, 2:, :]).reshape(x.shape[0], 8)
-        x_hor = ((x[:, :, :2] << 8) + (x[:, :, 1:3] << 4) + x[:, :, 2:]).reshape(x.shape[0], 8)
-        x_ex_00 = ((x[:, 1:, :3] << 8) + (x[:, 1:, 1:] << 4) + x[:, :3, 1:]).reshape(x.shape[0], 9)
-        x_ex_01 = ((x[:, :3, :3] << 8) + (x[:, 1:, :3] << 4) + x[:, 1:, 1:]).reshape(x.shape[0], 9)
-        x_ex_10 = ((x[:, :3, :3] << 8) + (x[:, :3, 1:] << 4) + x[:, 1:, 1:]).reshape(x.shape[0], 9)
-        x_ex_11 = ((x[:, :3, :3] << 8) + (x[:, 1:, :3] << 4) + x[:, :3, 1:]).reshape(x.shape[0], 9)
-        return np.concatenate([x_vert, x_hor, x_ex_00, x_ex_01, x_ex_10, x_ex_11], axis=1)
     
     def forward(self, obs):
-        obs = obs.cpu().numpy()
-        obs = self.unstack(obs)
-        obs = self.f3(obs)
-        return torch.tensor(obs, dtype=torch.float32, device="cuda")
+        # Use torch.zeros directly to avoid NumPy
+        batch_size = obs.size(0)
+        encoded_obs = torch.zeros((batch_size, 24, 16, 16), device=obs.device, dtype=torch.float32)
+
+        observation = self.unstack(obs)
+
+        # Efficiently encode adjacency features without explicit loops
+        for idx, (pos1, pos2) in enumerate(self.adjacent_pairs):
+            power1 = observation[:, pos1[0], pos1[1]].to(torch.long)
+            power2 = observation[:, pos2[0], pos2[1]].to(torch.long)
+            # Use advanced indexing to set values in encoded_obs directly
+            encoded_obs[torch.arange(batch_size), idx, power1, power2] = 1
+        
+        # Flatten for feature dimension
+        encoded_obs = encoded_obs.view(batch_size, -1)
+        return encoded_obs
 
 warnings.filterwarnings("ignore")
 register(
@@ -69,7 +73,7 @@ my_config = {
 
     "policy_kwargs": dict(
         features_extractor_class=FeatureExtractor2048,
-        net_arch=[dict(pi=[16, 16], vf=[16, 16])]
+        net_arch=[dict(pi=[64, 64, 64, 64], vf=[64, 64])]
     ),
 }
 

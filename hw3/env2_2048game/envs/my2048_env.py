@@ -65,8 +65,8 @@ class My2048Env(gym.Env):
         # self.action_space = spaces.Box(0, 3, (1,), dtype=int)
         # Suppose that the maximum tile is as if you have powers of 2 across the board.
         layers = self.squares
-        # self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
-        self.observation_space = spaces.MultiBinary((layers, self.w, self.h))
+        self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
+        # self.observation_space = spaces.MultiBinary((layers, self.w, self.h))
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(0.)
@@ -136,6 +136,7 @@ class My2048Env(gym.Env):
                 self.best_reward = reward
 
             self.set_illegal_move_reward(-self.best_reward * 2)
+            # self.set_illegal_move_reward(-256)
             
         except IllegalMove:
             logging.debug("Illegal move")
@@ -154,9 +155,9 @@ class My2048Env(gym.Env):
         info['score']   = self.score
 
         # Return observation (board state), reward, done, truncate and info dict
-        # return stack(self.Matrix), reward / 1024, done, truncate, info
+        # return stack(self.Matrix), reward, done, truncate, info
         # log2(reward)
-        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))) / 5, done, truncate, info
+        return stack(self.Matrix), (np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))), done, truncate, info
 
     def reset(self, seed=None, options=None):
         self.seed(seed=seed)
