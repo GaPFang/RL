@@ -6,14 +6,47 @@ import wandb
 from wandb.integration.sb3 import WandbCallback
 
 import torch
+import torch.nn as nn
+import numpy as np
 
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
 import os
 
+
+class FeatureExtractor2048(BaseFeaturesExtractor):
+    def __init__(self, observation_space, features_dim: int = 52):
+        super().__init__(observation_space, features_dim)
+
+    def unstack(self, layered):
+        representation = np.arange(16, dtype=int)
+        flat = np.sum(layered * representation[:, np.newaxis, np.newaxis], axis=1)
+        flat = flat.reshape((layered.shape[0], 4, 4)).astype(int)
+        return flat
+
+    def f2(self, x):
+        x_vert = ((x[:, :3, :] << 4) + x[:, 1:, :]).reshape((x.shape[0], 12))
+        x_hor = ((x[:, :, :3] << 4) + x[:, :, 1:]).reshape((x.shape[0], 12))
+        return np.concatenate([x_vert, x_hor], axis=1)
+
+    def f3(self, x):
+        x_vert = ((x[:, :2, :] << 8) + (x[:, 1:3, :] << 4) + x[:, 2:, :]).reshape(x.shape[0], 8)
+        x_hor = ((x[:, :, :2] << 8) + (x[:, :, 1:3] << 4) + x[:, :, 2:]).reshape(x.shape[0], 8)
+        x_ex_00 = ((x[:, 1:, :3] << 8) + (x[:, 1:, 1:] << 4) + x[:, :3, 1:]).reshape(x.shape[0], 9)
+        x_ex_01 = ((x[:, :3, :3] << 8) + (x[:, 1:, :3] << 4) + x[:, 1:, 1:]).reshape(x.shape[0], 9)
+        x_ex_10 = ((x[:, :3, :3] << 8) + (x[:, :3, 1:] << 4) + x[:, 1:, 1:]).reshape(x.shape[0], 9)
+        x_ex_11 = ((x[:, :3, :3] << 8) + (x[:, 1:, :3] << 4) + x[:, :3, 1:]).reshape(x.shape[0], 9)
+        return np.concatenate([x_vert, x_hor, x_ex_00, x_ex_01, x_ex_10, x_ex_11], axis=1)
+    
+    def forward(self, obs):
+        obs = obs.cpu().numpy()
+        obs = self.unstack(obs)
+        obs = self.f3(obs)
+        return torch.tensor(obs, dtype=torch.float32, device="cuda")
 
 warnings.filterwarnings("ignore")
 register(
@@ -35,10 +68,10 @@ my_config = {
     "learning_rate": 1e-4,
 
     "policy_kwargs": dict(
-        net_arch=[dict(pi=[32, 32, 32, 32], vf=[32, 32])]
+        features_extractor_class=FeatureExtractor2048,
+        net_arch=[dict(pi=[16, 16], vf=[16, 16])]
     ),
 }
-
 
 def make_env():
     env = gym.make('2048-v0')
@@ -127,8 +160,8 @@ if __name__ == "__main__":
     # Note: Set verbose to 0 if you don't want info messages
     model = my_config["algorithm"](
         my_config["policy_network"], 
-        train_env, 
-        verbose=2,
+        train_env,
+        verbose=1,
         tensorboard_log=my_config["run_id"],
         learning_rate=my_config["learning_rate"],
         policy_kwargs=my_config["policy_kwargs"]
