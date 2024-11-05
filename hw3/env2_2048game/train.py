@@ -83,7 +83,7 @@ my_config = {
 
     "policy_kwargs": dict(
         features_extractor_class=FeatureExtractor2048,
-        net_arch=[dict(pi=[32, 32, 32, 32], vf=[32, 32])]
+        net_arch=[dict(pi=[32, 32], vf=[32, 32])]
     ),
 }
 
@@ -94,7 +94,6 @@ def make_train_env():
 
 def make_eval_env():
     env = gym.make('2048-eval')
-    env = LogRewardWrapper(env)
     return env
 
 def eval(env, model, eval_episode_num):
