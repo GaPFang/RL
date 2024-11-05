@@ -62,10 +62,11 @@ class My2048Env(gym.Env):
 
         # Members for gym implementation
         self.action_space = spaces.Discrete(4)
+        # self.action_space = spaces.Box(0, 3, (1,), dtype=int)
         # Suppose that the maximum tile is as if you have powers of 2 across the board.
         layers = self.squares
-        self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
-        # self.observation_space = spaces.MultiBinary((layers, self.w, self.h))
+        # self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
+        self.observation_space = spaces.MultiBinary((layers, self.w, self.h))
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(0.)

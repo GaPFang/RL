@@ -25,12 +25,12 @@ register(
 my_config = {
     "run_id": f"{len(os.listdir('models'))}",
 
-    "algorithm": A2C,
+    "algorithm": PPO,
     "policy_network": "MlpPolicy",
     "save_path": f"models/{len(os.listdir('models'))}",
 
     "epoch_num": 10000,
-    "timesteps_per_epoch": 10000,
+    "timesteps_per_epoch": 1000,
     "eval_episode_num": 10,
     "learning_rate": 1e-4,
 
