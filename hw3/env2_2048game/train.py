@@ -89,12 +89,12 @@ my_config = {
 
 def make_train_env():
     env = gym.make('2048-v0')
-    # env = LogRewardWrapper(env)
+    env = LogRewardWrapper(env)
     return env
 
 def make_eval_env():
     env = gym.make('2048-eval')
-    # env = LogRewardWrapper(env)
+    env = LogRewardWrapper(env)
     return env
 
 def eval(env, model, eval_episode_num):
