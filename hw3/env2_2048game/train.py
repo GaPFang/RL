@@ -8,6 +8,7 @@ from wandb.integration.sb3 import WandbCallback
 import torch
 import torch.nn as nn
 import numpy as np
+import math
 
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
@@ -16,6 +17,10 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
 import os
+
+class LogRewardWrapper(gym.RewardWrapper):
+    def reward(self, reward):
+        return np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))
 
 class FeatureExtractor2048(BaseFeaturesExtractor):
     def __init__(self, observation_space, features_dim: int = 6144):
@@ -73,12 +78,13 @@ my_config = {
 
     "policy_kwargs": dict(
         features_extractor_class=FeatureExtractor2048,
-        net_arch=[dict(pi=[64, 64, 64, 64], vf=[64, 64])]
+        net_arch=[dict(pi=[32, 32, 32, 32], vf=[32, 32])]
     ),
 }
 
 def make_env():
     env = gym.make('2048-v0')
+    env = LogRewardWrapper(env)
     return env
 
 def eval(env, model, eval_episode_num):
