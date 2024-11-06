@@ -23,13 +23,20 @@ class LogRewardWrapper(gym.RewardWrapper):
         return np.log2(reward) if reward > 0 else (0 if reward == 0 else -np.log2(-reward))
 
 class FeatureExtractor2048(BaseFeaturesExtractor):
-    def __init__(self, observation_space, features_dim: int = 6144):
+    def __init__(self, observation_space, features_dim: int = 24 * 16 * 16 + 16 * 16):
         super().__init__(observation_space, features_dim)
         self.adjacent_pairs = [
             ((i, j), (i + di, j + dj))
             for i in range(4) for j in range(4)
             for di, dj in [(1, 0), (0, 1)]
             if 0 <= i + di < 4 and 0 <= j + dj < 4
+        ]
+
+        self.adjacent_triplets = [
+            ((i - di1, j - dj1), (i, j), (i + di2, j + dj2))
+            for i in range(4) for j in range(4)
+            for di1, dj1, di2, dj2 in [(1, 0, 1, 0), (1, 0, 0, 1), (0, 1, 1, 0), (0, 1, 0, 1), (-1, 0, 0, 1), (0, -1, 1, 0)]
+            if 0 <= i - di1 < 4 and 0 <= j - dj1 < 4 and 0 <= i + di2 < 4 and 0 <= j + dj2 < 4
         ]
     
     def unstack(self, layered):
@@ -41,6 +48,9 @@ class FeatureExtractor2048(BaseFeaturesExtractor):
     
     def forward(self, obs):
         # Use torch.zeros directly to avoid NumPy
+        # if only three dimensions
+        if len(obs.shape) == 3:
+            obs = obs.unsqueeze(0)
         batch_size = obs.size(0)
         encoded_obs = torch.zeros((batch_size, 24, 16, 16), device=obs.device, dtype=torch.float32)
 
@@ -54,8 +64,10 @@ class FeatureExtractor2048(BaseFeaturesExtractor):
             encoded_obs[torch.arange(batch_size), idx, power1, power2] = 1
         
         # Flatten for feature dimension
-        encoded_obs = encoded_obs.view(batch_size, -1)
-        return encoded_obs
+        obs = obs.reshape(batch_size, -1)
+        encoded_obs = encoded_obs.reshape(batch_size, -1)
+        # concatenate with original observation
+        return torch.cat([obs, encoded_obs], dim=1)
 
 warnings.filterwarnings("ignore")
 register(
@@ -149,9 +161,9 @@ def train(eval_env, model, config):
         
 
         ### Save best model
-        if current_best < avg_score:
+        if current_best < avg_highest:
             print("Saving Model")
-            current_best = avg_score
+            current_best = avg_highest
             save_path = config["save_path"]
             model.save(f"{save_path}/{epoch}")
 
